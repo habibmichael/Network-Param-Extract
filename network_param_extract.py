@@ -301,3 +301,107 @@ def open_ssh_conn(ip):
             print Fore.GREEN + "* All parameters were extracted from device %s" % ip,
            
  
+        #Extracting device parameters
+        #...starting with the ones destined to the NetworkDevices table in MySQL
+        
+        dev_hostname = re.search(r"(.+) uptime is", output)
+        hostname = dev_hostname.group(1)
+        #print hostname
+        
+        dev_mac = re.findall(r"\(bia (.+?)\)", output)
+        #print dev_mac
+        mac = dev_mac[0]
+        #print mac
+        
+        dev_vendor = re.search(r"(.+?) (.+) bytes of memory", output)
+        vendor = dev_vendor.group(1)
+        #print vendor
+        
+        dev_model = re.search(r"(.+?) (.+?) (.+) bytes of memory", output)
+        model = dev_model.group(2)
+        #print model
+        
+        dev_image_name = re.search(r" \((.+)\), Version", output)
+        image_name = dev_image_name.group(1)
+        #print image_name
+        
+        dev_os = re.search(r"\), Version (.+),", output)
+        os = dev_os.group(1)
+        #print os
+        
+        serial_no = ""
+        if len(re.findall(r"(.+), SN: (.+?)\r\n", output)) == 0:
+            serial_no = "unknown"
+        else:
+            serial_no = re.findall(r"(.+), SN: (.+?)\r\n", output)[0][1].strip()
+            #print serial_no
+        
+        dev_uptime = re.search(r" uptime is (.+)\n", output)
+        uptime = dev_uptime.group(1)
+        uptime_value_list = uptime.split(', ')
+        
+        #Getting the device uptime in seconds
+        y_sec = 0
+        w_sec = 0
+        d_sec = 0
+        h_sec = 0
+        m_sec = 0
+        
+        for j in uptime_value_list:
+        
+            if 'year' in j:
+                y_sec = int(j.split(' ')[0]) * 31449600
+                
+            elif 'week' in j:
+                w_sec = int(j.split(' ')[0]) * 604800
+                
+            elif 'day' in j:
+                d_sec = int(j.split(' ')[0]) * 86400
+                
+            elif 'hour' in j:
+                h_sec = int(j.split(' ')[0]) * 3600
+                
+            elif 'minute' in j:
+                m_sec = int(j.split(' ')[0]) * 60
+            
+        total_uptime_sec = y_sec + w_sec + d_sec + h_sec + m_sec
+        #print total_uptime_sec
+        
+        cpu_model = ""
+        if re.search(r".isco (.+?) \((.+)\) processor(.+)\n", output) == None:
+            cpu_model = "unknown"
+        else:
+            cpu_model = re.search(r".isco (.+?) \((.+)\) processor(.+)\n", output).group(2)
+        #print cpu_model
+        
+        cpu_speed = ""
+        if re.search(r"(.+?)at (.+?)MHz(.+)\n", output) == None:
+            cpu_speed = "unknown"
+        else:
+            cpu_speed = re.search(r"(.+?)at (.+?)MHz(.+)\n", output).group(2)
+        #print cpu_speed
+        
+        serial_int = ""
+        if re.findall(r"Serial([0-9]*)/([0-9]*) (.+)\n", output) == None:
+            serial_int = "no serial"
+        else:
+            serial_int = len(re.findall(r"Serial([0-9]*)/([0-9]*) (.+)\n", output))
+        #print serial_int
+        
+        dev_cdp_neighbors = re.findall(r"Device ID: (.+)\r\n", output)
+        all_cdp_neighbors = ','.join(dev_cdp_neighbors)
+        #print all_cdp_neighbors
+        
+        dev_routing_pro = re.findall(r"Routing Protocol is \"(.+)\"\r\n", output)
+        #print dev_routing_pro
+        is_internal = []
+        is_external = []
+        for protocol in dev_routing_pro:
+            if 'bgp' in protocol:
+                is_external.append(protocol)
+            else:
+                is_internal.append(protocol)
+                
+        internal_pro = ','.join(is_internal)
+        external_pro = ','.join(is_external)
+        
