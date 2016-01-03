@@ -404,4 +404,99 @@ def open_ssh_conn(ip):
                 
         internal_pro = ','.join(is_internal)
         external_pro = ','.join(is_external)
+
+        dev_cpu_util_per5min = re.search(r"CPU utilization for five seconds: (.+) five minutes: (.+?)%", output)
+        cpu_util_per5min = dev_cpu_util_per5min.group(2)
+        #print cpu_util_per5min
         
+        #Append CPU value for each device to the cpu_values list
+        cpu_values.append(int(cpu_util_per5min))
+        
+        #Get top 3 CPU devices
+        top3_cpu[hostname] = cpu_util_per5min
+		
+		### Processor Memory ###
+		
+        dev_used_proc_mem = re.search(r"Processor(.+)\n ", output)
+        dev_used_proc_mem = dev_used_proc_mem.group(1)
+        #print dev_used_proc_mem
+        
+        total_proc_mem = dev_used_proc_mem.split('   ')[2].strip()
+        used_proc_mem = dev_used_proc_mem.split('   ')[3].strip()
+        #print total_proc_mem
+        #print used_proc_mem
+        
+        #Get percentage of used proc mem
+        proc_mem_percent = format(int(used_proc_mem) * 100 / float(total_proc_mem), ".2f")
+        #print proc_mem_percent
+        
+        #Append used proc memory values for each device to the mem_values list
+        proc_mem_values.append(float(proc_mem_percent))
+        
+        #Get top 3 proc memory devices
+        top3_proc_mem[hostname] = proc_mem_percent
+        
+		### I/O Memory ###
+		
+        dev_used_io_mem = re.search(r"      I/O(.+)\n", output)
+        dev_used_io_mem = dev_used_io_mem.group(1)
+        #print dev_used_io_mem
+        
+        total_io_mem = dev_used_io_mem.split('   ')[2].strip()
+        used_io_mem = dev_used_io_mem.split('   ')[3].strip()
+        #print total_io_mem
+        #print used_io_mem
+        
+        #Get percentage of used proc mem
+        io_mem_percent = format(int(used_io_mem) * 100 / float(total_io_mem), ".2f")
+        #print io_mem_percent
+        
+        #Append used I/O memory values for each device to the mem_values list
+        io_mem_values.append(float(io_mem_percent))
+        
+        #Get top 3 I/O memory devices
+        top3_io_mem[hostname] = io_mem_percent
+        
+		### UP Interfaces ###
+		
+        dev_total_int = re.findall(r"([A-Za-z]*)Ethernet([0-9]*)(.+)YES(.+)\n", output)
+        total_int = len(dev_total_int)
+        #print total_int
+        
+        dev_total_up_int = re.findall(r"(.+)Ethernet([0-9]*)/([0-9]*)[\s]*(.+)up[\s]*up", output)
+        total_up_int = len(dev_total_up_int)
+        #print total_up_int
+        
+        #Get percentage of Eth UP interfaces out of the total number of Eth interfaces
+        intf_percent = format(total_up_int * 100 / float(total_int), ".2f")
+        #print intf_percent
+        
+        #Append percentage of UP interfaces for each device to the upint_values list
+        upint_values.append(float(intf_percent))
+        
+        #Get top 3 UP Eth interfaces density devices
+        top3_upint[hostname] = intf_percent
+        
+        #Insert/Update if exists all network devices data into the MySQL database table NetworkDevices. Calling sql_connection function                 
+        sql_connection("REPLACE INTO NetworkDevices(Hostname,MACAddr,Vendor,Model,Image,IOSVersion,SerialNo,Uptime,CPUModel,CPUSpeed,SerialIntfNo,CiscoNeighbors,IntRoutingPro,ExtRoutingPro) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (hostname, mac, vendor, model, image_name, os, serial_no, total_uptime_sec, cpu_model, cpu_speed, serial_int, all_cdp_neighbors, internal_pro, external_pro))
+        
+        #Closing the SSH connection
+        session.close()
+     
+    except paramiko.AuthenticationException:
+        print Fore.RED + "* Invalid SSH username or password. \n* Please check the username/password file or the device configuration!\n"
+        check_sql = False
+        
+#Creating threads
+def create_threads():
+    threads = []
+    for ip in ip_list:
+        th = threading.Thread(target = open_ssh_conn, args = (ip,))   #args is a tuple with a single element
+        th.start()
+        threads.append(th)
+        
+    for th in threads:
+        th.join()
+
+#Calling threads creation function
+create_threads()
