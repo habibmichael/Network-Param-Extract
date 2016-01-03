@@ -500,3 +500,90 @@ def create_threads():
 
 #Calling threads creation function
 create_threads()
+
+
+poll_timestamp = datetime.datetime.now()
+#Defining a function to get top 3 devices in CPU/mem/intf usage
+def top3(each_dict):
+    global top3_list
+    top3 = []
+	
+    for host, usage in sorted(each_dict.items(), key = lambda x: x[1], reverse = True)[:3]:
+        top3.append(host)
+        top3_list = ",".join(top3)
+    #print top3_list
+
+#CPU average function
+def cpu_average():
+    try:
+        cpu = sum(cpu_values) / float(len(cpu_values))
+        
+        #Calling the top3 function for the CPU dictionary
+        top3(top3_cpu)
+        
+        #Write values to the MySQL database CPUUtilization table
+        sql_connection("INSERT INTO CPUUtilization(NetworkCPUUtilizationPercent,Top3CPUDevices,PollTimestamp) VALUES(%s, %s, %s)", (cpu, top3_list, poll_timestamp))
+    
+    except ZeroDivisionError:
+        print "* There was an error while computing a network parameter. No record has been added to MySQL. Please retry."
+       
+cpu_average()
+
+#Used proc memory average function
+def mem_proc_average():
+    try:
+        mem_proc = sum(proc_mem_values) / float(len(proc_mem_values))
+        
+        #Calling the top3 function for the mem proc dictionary
+        top3(top3_proc_mem)
+        
+        #Write values to the MySQL database ProcMemUtilization table
+        sql_connection("INSERT INTO ProcMemUtilization(NetworkProcMemUtilizationPercent,Top3ProcMemDevices,PollTimestamp) VALUES(%s, %s, %s)", (mem_proc, top3_list, poll_timestamp))
+    
+    except ZeroDivisionError:
+        print "* There was an error while computing a network parameter. No record has been added to MySQL. Please retry."
+        
+mem_proc_average()
+
+#Used I/O memory average function
+def mem_io_average():
+    try:
+        mem_io = sum(io_mem_values) / float(len(io_mem_values))
+        
+        #Calling the top3 function for the mem I/O dictionary
+        top3(top3_io_mem)
+        
+        #Write values to the MySQL database IOMemUtilization table
+        sql_connection("INSERT INTO IOMemUtilization(NetworkIOMemUtilizationPercent,Top3IOMemDevices,PollTimestamp) VALUES(%s, %s, %s)", (mem_io, top3_list, poll_timestamp))
+    
+    except ZeroDivisionError:
+        print "* There was an error while computing a network parameter. No record has been added to MySQL. Please retry."
+        
+mem_io_average()
+
+#Total UP Eth interfaces function
+def upint_total():
+    try:
+        upint = sum(upint_values) / float(len(upint_values))
+        
+        #Calling the top3 function for the UP intf dictionary
+        top3(top3_upint)
+        
+        #Write values to the MySQL database UPEthInterfaces table
+        sql_connection("INSERT INTO UPEthInterfaces(NetworkUPEthIntfPercent,Top3UPEthIntf,PollTimestamp) VALUES(%s, %s, %s)", (upint, top3_list, poll_timestamp))
+    
+    except ZeroDivisionError:
+        print "* There was an error while computing a network parameter. No record has been added to MySQL. Please retry."
+        
+upint_total()
+
+#print check_sql
+
+if check_sql == True:
+    print "\n* All parameters were successfully exported to MySQL."
+
+else:
+    print Fore.RED + "\n* There was a problem exporting data to MySQL.\n* Check the files, database and SQL_Error_Log.txt.\n"
+
+#De-initialize colorama
+deinit()
